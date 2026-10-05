@@ -24,7 +24,8 @@ class Logger:
             vals_str=""
 
             # TODO Part 5: Write the values from the list to the file
-            ...
+            for val in values_list:
+                vals_str+=str(val) + ", "
             
             vals_str+="\n"
             
@@ -81,11 +82,8 @@ class FileReader:
 
 # TODO Part 5: Implement the conversion from Quaternion to Euler Angles
 def euler_from_quaternion(quat):
-    """
-    Convert quaternion (w in last place) to euler roll, pitch, yaw.
-    quat = [x, y, z, w]
-    """
-    ... # just unpack yaw
+    x, y, z, w = quat
+    yaw = atan2(2*(w*z+x*y), 1-2*(y**2+z**2))
     return yaw
 
 

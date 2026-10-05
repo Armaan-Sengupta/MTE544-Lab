@@ -3,6 +3,7 @@
 # Feel free to make any modifications/additions here
 
 import matplotlib.pyplot as plt
+import numpy as np
 from utilities import FileReader
 
 def plot_errors(filename):
@@ -22,6 +23,30 @@ def plot_errors(filename):
     plt.grid()
     plt.show()
     
+def plot_laser(filename):
+    with open(filename) as file:
+        scans = list(file)[1:] 
+    values = scans[0].strip().split(',')  # Plot only the first scan.
+
+    ranges = np.array([float(value) for value in values[0].split()])
+    angle_increment = float(values[1])
+    finite = np.isfinite(ranges)
+    max_range = ranges[finite].max()
+    ranges[~finite] = max_range
+
+    angles = np.arange(len(ranges)) * angle_increment
+    x = ranges * np.cos(angles)
+    y = ranges * np.sin(angles)
+
+    plt.figure()
+    plt.scatter(x, y, s=10)
+    plt.title(filename)
+    plt.xlabel("x (m)")
+    plt.ylabel("y (m)")
+    plt.axis("equal")
+    plt.grid()
+    plt.show()
+
 import argparse
 
 if __name__=="__main__":
@@ -35,4 +60,7 @@ if __name__=="__main__":
 
     filenames=args.files
     for filename in filenames:
-        plot_errors(filename)
+        if filename in ("laser_content_line.csv", "laser_content_circle.csv", "laser_content_spiral.csv"):
+            plot_laser(filename)
+        else:
+            plot_errors(filename)
