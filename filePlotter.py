@@ -26,26 +26,50 @@ def plot_errors(filename):
 def plot_laser(filename):
     with open(filename) as file:
         scans = list(file)[1:] 
-    values = scans[0].strip().split(',')  # Plot only the first scan.
 
-    ranges = np.array([float(value) for value in values[0].split()])
-    angle_increment = float(values[1])
-    finite = np.isfinite(ranges)
-    max_range = ranges[finite].max()
-    ranges[~finite] = max_range
+    fig = plt.figure()
+    prev_time = None
 
-    angles = np.arange(len(ranges)) * angle_increment
-    x = ranges * np.cos(angles)
-    y = ranges * np.sin(angles)
+    for scan in scans:
+        if not plt.fignum_exists(fig.number):
+            break
 
-    plt.figure()
-    plt.scatter(x, y, s=10)
-    plt.title(filename)
-    plt.xlabel("x (m)")
-    plt.ylabel("y (m)")
-    plt.axis("equal")
-    plt.grid()
-    plt.show()
+        values = scan.strip().split(',')
+        if len(values) < 3 or not values[0].strip():
+            continue
+
+        ranges = np.array([float(value) for value in values[0].split()])
+        angle_increment = float(values[1])
+        time = float(values[2])
+
+        if prev_time is not None:
+            delta_time = time - prev_time
+            if delta_time > 1e4:  # convert nanosecondss to seconds
+                delta_time /= 1e9
+            if delta_time > 0:
+                plt.pause(delta_time)
+
+        prev_time = time
+
+        finite = np.isfinite(ranges)
+        max_range = ranges[finite].max() if np.any(finite) else 0.0
+        ranges[~finite] = max_range
+
+        angles = np.arange(len(ranges)) * angle_increment
+        x = ranges * np.cos(angles)
+        y = ranges * np.sin(angles)
+
+        plt.cla()
+        plt.scatter(x, y, s=10)
+        plt.title(filename)
+        plt.xlabel("x (m)")
+        plt.ylabel("y (m)")
+        plt.axis("equal")
+        plt.grid()
+        plt.draw()
+
+    if plt.fignum_exists(fig.number):
+        plt.show()
 
 import argparse
 
