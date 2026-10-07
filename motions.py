@@ -140,19 +140,19 @@ class motion_executioner(Node):
         msg.linear.z = 0.0 
         msg.angular.x = 0.0
         msg.angular.y = 0.0
-        msg.angular.z = 0.1
+        msg.angular.z = 0.5
         return msg
 
     def make_spiral_twist(self):
         msg=Twist()
-        self.radius_ += 0.005
+        self.radius_ += 0.01
         radius = 0.1 + self.radius_
         msg.linear.x = 0.1
         msg.linear.y = 0.0
         msg.linear.z = 0.0 
         msg.angular.x = 0.0
         msg.angular.y = 0.0
-        msg.angular.z = 0.1/radius 
+        msg.angular.z = 0.5/radius 
         ... # fill up the twist msg for spiral motion
         return msg
     
