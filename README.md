@@ -196,5 +196,22 @@ python3 plot_errors.py --files logs/my_pid_trial/linear.csv logs/my_pid_trial/an
 CSV rows are written immediately, so Ctrl+C retains collected samples. Keep the
 whole run directory for P/PID comparisons and the report. The integral remains
 the existing finite-history approximation, rather than an accumulated integral.
-The Part 6 trajectory planner and trajectory velocity limits still require
-implementation before trajectory trials can run.
+For Part 6, reset odometry before each trial (restart Gazebo in simulation;
+on the physical robot use `ros2 service call /reset_pose irobot_create_msgs/srv/ResetPose`).
+Run the two paths separately:
+
+```bash
+python3 decisions.py --motion trajectory --trajectory parabola --controller P
+python3 decisions.py --motion trajectory --trajectory sigmoid --controller P
+```
+
+The planner samples the specified formulas every 0.05 m in x. The controller
+uses the existing nearest-point-plus-three lookahead to steer, reduces speed
+with distance to the final point, and stops within 0.05 m of that final point.
+Trajectory commands are limited to 0–0.22 m/s and ±1.9 rad/s for initial tuning;
+adjust limits for your platform. P is the initial choice because it gives a
+simple tuning baseline without integral windup or derivative noise. Gains still
+need simulation and physical-robot tuning. The saved `run.json` contains the
+reference path and the CSVs contain the actual pose and controller errors.
+Here, the linear error is distance to the endpoint and the angular error is
+the heading error to the lookahead point; neither is cross-track error.

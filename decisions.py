@@ -27,7 +27,7 @@ from controller import controller, trajectoryController
 
 class decision_maker(Node):
     
-    def __init__(self, publisher_msg, publishing_topic, qos_publisher, goalPoint, rate=10, motion_type=POINT_PLANNER, control_type=0, log_dir=None):
+    def __init__(self, publisher_msg, publishing_topic, qos_publisher, goalPoint, rate=10, motion_type=POINT_PLANNER, control_type=0, log_dir=None, trajectory="parabola"):
 
         super().__init__("decision_maker")
 
@@ -50,7 +50,7 @@ class decision_maker(Node):
     
         elif motion_type==TRAJECTORY_PLANNER:
             self.controller=trajectoryController(klp=0.2, klv=0.5, kap=0.8, kav=0.6, control_type=control_type, log_dir=self.log_dir)
-            self.planner=planner(TRAJECTORY_PLANNER)
+            self.planner=planner(TRAJECTORY_PLANNER, trajectory=trajectory)
 
         else:
             print("Error! you don't have this planner", file=sys.stderr)
@@ -62,10 +62,13 @@ class decision_maker(Node):
         # Instantiate the planner
         # NOTE: goalPoint is used only for the pointPlanner
         self.goal=self.planner.plan(goalPoint)
+        # A trajectory is a list of points; stop at its final point.
+        self.final_goal = self.goal if motion_type == POINT_PLANNER else self.goal[-1]
         metadata = {
             "controller": ("P", "PD", "PI", "PID")[control_type],
             "motion": "point" if motion_type == POINT_PLANNER else "trajectory",
             "goal": self.goal,
+            "trajectory": trajectory if motion_type == TRAJECTORY_PLANNER else None,
             "rate_hz": rate,
             "timestamp_units": "seconds (odometry clock)",
             "linear_gains": {name: getattr(self.controller.PID_linear, name) for name in ("kp", "kv", "ki")},
@@ -89,7 +92,7 @@ class decision_maker(Node):
         vel_msg=Twist()
         
         # TODO Part 3: Check if you reached the goal
-        reached_goal = (calculate_linear_error(self.localizer.getPose(), self.goal) < 0.05)
+        reached_goal = (calculate_linear_error(self.localizer.getPose(), self.final_goal) < 0.05)
         
 
         if reached_goal:
@@ -127,7 +130,7 @@ def main(args=None):
     if args.motion.lower() == "point":
         DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=POINT_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir)
     elif args.motion.lower() == "trajectory":
-        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=TRAJECTORY_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir)
+        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=TRAJECTORY_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir, trajectory=args.trajectory)
     else:
         print("invalid motion type", file=sys.stderr)        
     
@@ -141,6 +144,7 @@ if __name__=="__main__":
 
     argParser=argparse.ArgumentParser(description="point or trajectory") 
     argParser.add_argument("--motion", type=str, default="point")
+    argParser.add_argument("--trajectory", choices=("parabola", "sigmoid"), default="parabola")
     argParser.add_argument("--controller", choices=("P", "PD", "PI", "PID"), default="P")
     argParser.add_argument("--log-dir", help="New directory for this run (default: logs/<timestamp>)")
     args = argParser.parse_args()
