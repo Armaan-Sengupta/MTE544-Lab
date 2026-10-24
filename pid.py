@@ -47,6 +47,9 @@ class PID_ctrl:
         
         # If insufficient data points, use only the proportional gain
         if (len(self.history) != self.history_length):
+            self.logger.log_values([
+                latest_error, 0.0, 0.0, Time.from_msg(stamp).nanoseconds / 1e9
+            ])
             return self.kp * latest_error
         
         # Compute the error derivative
@@ -60,6 +63,14 @@ class PID_ctrl:
             
             dt=(t1.nanoseconds - t0.nanoseconds) / 1e9
             
+            # Repeated/reset odometry timestamps cannot define a derivative.
+            if dt <= 0:
+                self.history = [stamped_error]
+                self.logger.log_values([
+                    latest_error, 0.0, 0.0, Time.from_msg(stamp).nanoseconds / 1e9
+                ])
+                return self.kp * latest_error
+
             dt_avg+=dt
 
             # use constant dt if the messages arrived inconsistent
@@ -68,8 +79,8 @@ class PID_ctrl:
             # TODO Part 5: calculate the error dot 
             error_dot += (self.history[i][0] - self.history[i-1][0])/dt
             
-        error_dot/=len(self.history)
-        dt_avg/=len(self.history)
+        error_dot/=(len(self.history) - 1)
+        dt_avg/=(len(self.history) - 1)
         
         # Compute the error integral
         sum_=0

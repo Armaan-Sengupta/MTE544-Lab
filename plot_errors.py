@@ -1,3 +1,4 @@
+from pathlib import Path
 import matplotlib.pyplot as plt
 from utilities import FileReader
 
@@ -8,6 +9,9 @@ def plot_errors(filename):
     
     headers, values=FileReader(filename).read_file()
     
+    if not values:
+        raise ValueError(f"No samples recorded in {filename}")
+
     time_list=[]
     
     first_stamp=values[0][-1]
@@ -21,13 +25,18 @@ def plot_errors(filename):
 
 
     axes[0].plot([lin[0] for lin in values], [lin[1] for lin in values])
-    axes[0].set_title("state space")
+    fig.suptitle(str(Path(filename)))
+    axes[0].set_title("Robot path" if headers[0] == "x" else "Error phase plot")
+    axes[0].set_xlabel("x [m]" if headers[0] == "x" else "Error [m or rad]")
+    axes[0].set_ylabel("y [m]" if headers[0] == "x" else "Error derivative [m/s or rad/s]")
     axes[0].grid()
 
     
-    axes[1].set_title("each individual state")
+    axes[1].set_title("Recorded states")
+    axes[1].set_xlabel("Elapsed time [s]")
+    axes[1].set_ylabel("State value (see legend)")
     for i in range(0, len(headers) - 1):
-        axes[1].plot(time_list, [lin[i] for lin in values], label= headers[i]+ " linear")
+        axes[1].plot(time_list, [lin[i] for lin in values], label=headers[i])
 
     axes[1].legend()
     axes[1].grid()

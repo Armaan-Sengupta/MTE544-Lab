@@ -1,41 +1,22 @@
+import csv
 from math import atan2, asin, sqrt
 
 M_PI=3.1415926535
 
 class Logger:
-    
-    def __init__(self, filename, headers=["e", "e_dot", "e_int", "stamp"]):
-        
+    """Write each sample immediately so interrupted experiments retain their data."""
+
+    def __init__(self, filename, headers=("e", "e_dot", "e_int", "stamp")):
         self.filename = filename
-
-        with open(self.filename, 'w') as file:
-            
-            header_str=""
-
-            for header in headers:
-                header_str+=header
-                header_str+=", "
-            
-            header_str+="\n"
-            
-            file.write(header_str)
-
+        with open(self.filename, 'w', newline='') as file:
+            csv.writer(file).writerow(headers)
 
     def log_values(self, values_list):
-
-        with open(self.filename, 'a') as file:
-            
-            vals_str=""
-            
-            for value in values_list:
-                vals_str+=f"{value}, "
-            
-            vals_str+="\n"
-            
-            file.write(vals_str)
-            
+        with open(self.filename, 'a', newline='') as file:
+            csv.writer(file).writerow(values_list)
 
     def save_log(self):
+        # Each log_values call already closes and flushes its file.
         pass
 
 class FileReader:
@@ -64,7 +45,6 @@ class FileReader:
                     read_headers=True
                     break
             
-            next(file)
             
             # Read each line and extract values
             for line in file:

@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 from utilities import Logger, euler_from_quaternion
 from rclpy.time import Time
@@ -12,7 +13,7 @@ from rclpy import init, spin, shutdown
 rawSensor = 0
 class localization(Node):
     
-    def __init__(self, localizationType=rawSensor):
+    def __init__(self, localizationType=rawSensor, log_dir="."):
 
         super().__init__("localizer")
         
@@ -21,7 +22,7 @@ class localization(Node):
 
         odom_qos = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT, history=HistoryPolicy.KEEP_LAST, depth=10)
         
-        self.loc_logger=Logger("robot_pose.csv", ["x", "y", "theta", "stamp"])
+        self.loc_logger=Logger(Path(log_dir) / "robot_pose.csv", ["x", "y", "theta", "stamp"])
         self.pose=None
         
         if localizationType == rawSensor:
@@ -39,7 +40,7 @@ class localization(Node):
         self.pose=[pose_msg.pose.pose.position.x, pose_msg.pose.pose.position.y, theta, pose_msg.header.stamp]
         
         # Log the data
-        self.loc_logger.log_values([self.pose[0], self.pose[1], self.pose[2], Time.from_msg(self.pose[3]).nanoseconds])
+        self.loc_logger.log_values([self.pose[0], self.pose[1], self.pose[2], Time.from_msg(self.pose[3]).nanoseconds / 1e9])
     
     def getPose(self):
         return self.pose

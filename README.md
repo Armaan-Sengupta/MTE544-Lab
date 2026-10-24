@@ -168,3 +168,33 @@ Submit the report and the code on Dropbox (LEARN) in the corresponding folder. O
 
 
 Good luck!
+
+## Collecting tuning runs with this implementation
+
+Run `python3 decisions.py --motion point --controller P`, then repeat with
+`--controller PID` (also supports `PI` and `PD`). Edit the linear and angular
+gains in `decisions.py` before each experiment. Each run creates a new
+`logs/<timestamp>/` directory; `--log-dir logs/my_pid_trial` selects a new named
+directory instead. Existing run directories are rejected to preserve results.
+
+Each directory contains:
+
+- `linear.csv` and `angular.csv`: `e`, `e_dot`, `e_int`, `stamp`, including
+  startup and goal-reached samples. Startup derivative/integral values are zero
+  while the controller collects its history. Invalid timestamp intervals reset
+  that history. Errors use metres and radians respectively.
+- `robot_pose.csv`: `x`, `y`, `theta`, `stamp`, in metres and radians.
+- `run.json`: controller type, gains, planned goal/path, control frequency, and
+  timestamp units. All CSV timestamps are odometry-clock **seconds**.
+
+For example, plot a saved trial with:
+
+```bash
+python3 plot_errors.py --files logs/my_pid_trial/linear.csv logs/my_pid_trial/angular.csv logs/my_pid_trial/robot_pose.csv
+```
+
+CSV rows are written immediately, so Ctrl+C retains collected samples. Keep the
+whole run directory for P/PID comparisons and the report. The integral remains
+the existing finite-history approximation, rather than an accumulated integral.
+The Part 6 trajectory planner and trajectory velocity limits still require
+implementation before trajectory trials can run.

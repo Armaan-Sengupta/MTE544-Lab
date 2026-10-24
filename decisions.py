@@ -2,6 +2,9 @@
 
 
 import sys
+import json
+from datetime import datetime
+from pathlib import Path
 
 from utilities import euler_from_quaternion, calculate_angular_error, calculate_linear_error
 from pid import PID_ctrl
@@ -24,25 +27,29 @@ from controller import controller, trajectoryController
 
 class decision_maker(Node):
     
-    def __init__(self, publisher_msg, publishing_topic, qos_publisher, goalPoint, rate=10, motion_type=POINT_PLANNER):
+    def __init__(self, publisher_msg, publishing_topic, qos_publisher, goalPoint, rate=10, motion_type=POINT_PLANNER, control_type=0, log_dir=None):
 
         super().__init__("decision_maker")
 
         #TODO Part 4: Create a publisher for the topic responsible for robot's motion
-        self.publisher = self.create_publisher(publisher_msg, publisher_topic, qos_publisher)
+        self.publisher = self.create_publisher(publisher_msg, publishing_topic, qos_publisher)
 
         publishing_period=1/rate
+        # One directory per experiment prevents P/PID tuning data being overwritten.
+        self.log_dir = Path(log_dir) if log_dir else Path("logs") / datetime.now().astimezone().strftime("%Y%m%dT%H%M%S_%f%z")
+        self.log_dir.mkdir(parents=True, exist_ok=False)
+        self.get_logger().info(f"Saving tuning data to {self.log_dir.resolve()}")
         
         # Instantiate the controller
         # TODO Part 5: Tune your parameters here
     
         if motion_type == POINT_PLANNER:
-            self.controller=controller(klp=0.2, klv=0.5, kap=0.8, kav=0.6)
+            self.controller=controller(klp=0.2, klv=0.5, kap=0.8, kav=0.6, control_type=control_type, log_dir=self.log_dir)
             self.planner=planner(POINT_PLANNER)    
     
     
         elif motion_type==TRAJECTORY_PLANNER:
-            self.controller=trajectoryController(klp=0.2, klv=0.5, kap=0.8, kav=0.6)
+            self.controller=trajectoryController(klp=0.2, klv=0.5, kap=0.8, kav=0.6, control_type=control_type, log_dir=self.log_dir)
             self.planner=planner(TRAJECTORY_PLANNER)
 
         else:
@@ -50,11 +57,22 @@ class decision_maker(Node):
 
 
         # Instantiate the localization, use rawSensor for now  
-        self.localizer=localization(rawSensor)
+        self.localizer=localization(rawSensor, log_dir=self.log_dir)
 
         # Instantiate the planner
         # NOTE: goalPoint is used only for the pointPlanner
         self.goal=self.planner.plan(goalPoint)
+        metadata = {
+            "controller": ("P", "PD", "PI", "PID")[control_type],
+            "motion": "point" if motion_type == POINT_PLANNER else "trajectory",
+            "goal": self.goal,
+            "rate_hz": rate,
+            "timestamp_units": "seconds (odometry clock)",
+            "linear_gains": {name: getattr(self.controller.PID_linear, name) for name in ("kp", "kv", "ki")},
+            "angular_gains": {name: getattr(self.controller.PID_angular, name) for name in ("kp", "kv", "ki")},
+        }
+        with open(self.log_dir / "run.json", "w") as file:
+            json.dump(metadata, file, indent=2)
 
         self.create_timer(publishing_period, self.timerCallback)
 
@@ -77,7 +95,9 @@ class decision_maker(Node):
         if reached_goal:
             print("reached goal")
             self.publisher.publish(vel_msg)
-            
+            # Preserve the terminal error as well as the terminal odometry pose.
+            self.controller.vel_request(self.localizer.getPose(), self.goal, False)
+
             self.controller.PID_angular.logger.save_log()
             self.controller.PID_linear.logger.save_log()
             raise SystemExit 
@@ -105,9 +125,9 @@ def main(args=None):
 
     # TODO Part 4: instantiate the decision_maker with the proper parameters for moving the robot
     if args.motion.lower() == "point":
-        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=POINT_PLANNER)
+        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=POINT_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir)
     elif args.motion.lower() == "trajectory":
-        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=TRAJECTORY_PLANNER)
+        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=TRAJECTORY_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir)
     else:
         print("invalid motion type", file=sys.stderr)        
     
@@ -121,6 +141,8 @@ if __name__=="__main__":
 
     argParser=argparse.ArgumentParser(description="point or trajectory") 
     argParser.add_argument("--motion", type=str, default="point")
+    argParser.add_argument("--controller", choices=("P", "PD", "PI", "PID"), default="P")
+    argParser.add_argument("--log-dir", help="New directory for this run (default: logs/<timestamp>)")
     args = argParser.parse_args()
 
     main(args)
