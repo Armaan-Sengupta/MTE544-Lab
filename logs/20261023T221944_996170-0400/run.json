@@ -1,0 +1,20 @@
+{
+  "controller": "P",
+  "motion": "point",
+  "goal": [
+    -1.0,
+    1.0
+  ],
+  "rate_hz": 10,
+  "timestamp_units": "seconds (odometry clock)",
+  "linear_gains": {
+    "kp": 0.2,
+    "kv": 0.5,
+    "ki": 0.2
+  },
+  "angular_gains": {
+    "kp": 0.8,
+    "kv": 0.6,
+    "ki": 0.2
+  }
+}
