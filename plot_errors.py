@@ -1,8 +1,23 @@
+import json
 from pathlib import Path
 import matplotlib.pyplot as plt
 from utilities import FileReader
 
 
+def planned_path(filename):
+    """Return the sampled trajectory from the run.json file, if this is a path run."""
+    run_file = Path(filename).with_name("run.json")
+    if not run_file.is_file():
+        return None, None
+
+    with open(run_file) as file:
+        metadata = json.load(file)
+
+    goal = metadata.get("goal")
+    # Point runs store [x, y]. Trajectory runs store [[x, y], ...].
+    if not goal or not isinstance(goal[0], (list, tuple)):
+        return None, None
+    return goal, metadata.get("trajectory")
 
 
 def plot_errors(filename):
@@ -24,11 +39,23 @@ def plot_errors(filename):
     fig, axes = plt.subplots(1,2, figsize=(14,6))
 
 
-    axes[0].plot([lin[0] for lin in values], [lin[1] for lin in values])
+    is_path = headers[0] == "x"
+    axes[0].plot(
+        [lin[0] for lin in values],
+        [lin[1] for lin in values],
+        label="actual" if is_path else None,
+    )
+    if is_path:
+        path, name = planned_path(filename)
+        if path:
+            label = f"ideal ({name})" if name else "ideal"
+            axes[0].plot([point[0] for point in path], [point[1] for point in path], "--", label=label)
+        axes[0].legend()
+        axes[0].set_aspect("equal", adjustable="datalim")
     fig.suptitle(str(Path(filename)))
-    axes[0].set_title("Robot path" if headers[0] == "x" else "Error phase plot")
-    axes[0].set_xlabel("x [m]" if headers[0] == "x" else "Error [m or rad]")
-    axes[0].set_ylabel("y [m]" if headers[0] == "x" else "Error derivative [m/s or rad/s]")
+    axes[0].set_title("Robot path" if is_path else "Error phase plot")
+    axes[0].set_xlabel("x [m]" if is_path else "Error [m or rad]")
+    axes[0].set_ylabel("y [m]" if is_path else "Error derivative [m/s or rad/s]")
     axes[0].grid()
 
     
