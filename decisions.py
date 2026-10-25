@@ -44,12 +44,12 @@ class decision_maker(Node):
         # TODO Part 5: Tune your parameters here
     
         if motion_type == POINT_PLANNER:
-            self.controller=controller(klp=0.2, klv=0.5, kap=0.8, kav=0.6, control_type=control_type, log_dir=self.log_dir)
+            self.controller=controller(control_type=control_type, log_dir=self.log_dir)
             self.planner=planner(POINT_PLANNER)    
     
     
         elif motion_type==TRAJECTORY_PLANNER:
-            self.controller=trajectoryController(klp=0.2, klv=0.5, kap=0.8, kav=0.6, control_type=control_type, log_dir=self.log_dir)
+            self.controller=trajectoryController(control_type=control_type, log_dir=self.log_dir)
             self.planner=planner(TRAJECTORY_PLANNER, trajectory=trajectory)
 
         else:

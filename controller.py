@@ -13,7 +13,7 @@ class controller:
     
     
     # Default gains of the controller for linear and angular motions
-    def __init__(self, klp=0.2, klv=0.2, kli=0.2, kap=0.2, kav=0.2, kai=0.2, control_type=P, log_dir="."):
+    def __init__(self, klp=0.933, klv=0.058, kli=0.061, kap=2.173, kav=0.214, kai=0.064, control_type=P, log_dir="."):
         
         # TODO Part 5 and 6: Modify the below lines to test your PD, PI, and PID controller
         self.PID_linear=PID_ctrl(control_type, klp, klv, kli, filename_=Path(log_dir) / "linear.csv")
@@ -41,7 +41,7 @@ class controller:
 
 class trajectoryController(controller):
 
-    def __init__(self, klp=0.2, klv=0.2, kli=0.2, kap=0.2, kav=0.2, kai=0.2, control_type=P, log_dir="."):
+    def __init__(self, klp=0.933, klv=0.058, kli=0.061, kap=2.173, kav=0.214, kai=0.064, control_type=P, log_dir="."):
         
         super().__init__(klp, klv, kli, kap, kav, kai, control_type, log_dir)
     
