@@ -193,6 +193,10 @@ For example, plot a saved trial with:
 python3 plot_errors.py --files logs/my_pid_trial/linear.csv logs/my_pid_trial/angular.csv logs/my_pid_trial/robot_pose.csv
 ```
 
+When `robot_pose.csv` is present in the same log directory, `plot_errors.py`
+also plots linear speed and rotational velocity estimated from consecutive
+pose samples.
+
 CSV rows are written immediately, so Ctrl+C retains collected samples. Keep the
 whole run directory for P/PID comparisons and the report. The integral remains
 the existing finite-history approximation, rather than an accumulated integral.

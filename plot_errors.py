@@ -1,4 +1,5 @@
 import json
+from math import atan2, cos, sin, sqrt
 from pathlib import Path
 import matplotlib.pyplot as plt
 from utilities import FileReader
@@ -20,6 +21,45 @@ def planned_path(filename):
     return goal, metadata.get("trajectory")
 
 
+def pose_velocities(filename):
+    """Return elapsed pose time, linear speed, and rotational velocity."""
+    pose_file = Path(filename).with_name("robot_pose.csv")
+    if not pose_file.is_file():
+        return None
+
+    headers, values = FileReader(pose_file).read_file()
+    if not values:
+        raise ValueError(f"No pose samples recorded in {pose_file}")
+    required_headers = ("x", "y", "theta", "stamp")
+    if tuple(headers) != required_headers:
+        raise ValueError(
+            f"Expected {required_headers} in {pose_file}, found {tuple(headers)}"
+        )
+
+    first_stamp = values[0][3]
+    elapsed = [row[3] - first_stamp for row in values]
+    linear_speed = [0.0]
+    rotational_velocity = [0.0]
+
+    for previous, current in zip(values, values[1:]):
+        dt = current[3] - previous[3]
+        if dt <= 0:
+            raise ValueError(f"Pose timestamps must increase in {pose_file}")
+
+        distance = sqrt(
+            (current[0] - previous[0]) ** 2
+            + (current[1] - previous[1]) ** 2
+        )
+        heading_delta = atan2(
+            sin(current[2] - previous[2]),
+            cos(current[2] - previous[2]),
+        )
+        linear_speed.append(distance / dt)
+        rotational_velocity.append(heading_delta / dt)
+
+    return elapsed, linear_speed, rotational_velocity
+
+
 def plot_errors(filename):
     
     headers, values=FileReader(filename).read_file()
@@ -36,7 +76,9 @@ def plot_errors(filename):
 
     
     
-    fig, axes = plt.subplots(1,2, figsize=(14,6))
+    velocities = pose_velocities(filename)
+    figure_count = 3 if velocities else 2
+    fig, axes = plt.subplots(1, figure_count, figsize=(7 * figure_count, 6))
 
 
     is_path = headers[0] == "x"
@@ -68,6 +110,20 @@ def plot_errors(filename):
     axes[1].legend()
     axes[1].grid()
 
+    if velocities:
+        velocity_time, linear_speed, rotational_velocity = velocities
+        axes[2].plot(velocity_time, linear_speed, label="linear speed [m/s]")
+        axes[2].plot(
+            velocity_time,
+            rotational_velocity,
+            label="rotational velocity [rad/s]",
+        )
+        axes[2].set_title("Estimated velocities from robot pose")
+        axes[2].set_xlabel("Elapsed time [s]")
+        axes[2].set_ylabel("Velocity")
+        axes[2].legend()
+        axes[2].grid()
+
     plt.show()
     
     
@@ -90,6 +146,5 @@ if __name__=="__main__":
     filenames=args.files
     for filename in filenames:
         plot_errors(filename)
-
 
 

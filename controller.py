@@ -13,7 +13,7 @@ class controller:
     
     
     # Default gains of the controller for linear and angular motions
-    def __init__(self, klp=0.933, klv=0.058, kli=0.061, kap=2.173, kav=0.214, kai=0.064, control_type=P, log_dir="."):
+    def __init__(self, klp=0.2, klv=0.058, kli=0.061, kap=1, kav=0.214, kai=0.064, control_type=P, log_dir="."):
         
         # TODO Part 5 and 6: Modify the below lines to test your PD, PI, and PID controller
         self.PID_linear=PID_ctrl(control_type, klp, klv, kli, filename_=Path(log_dir) / "linear.csv")
@@ -41,7 +41,7 @@ class controller:
 
 class trajectoryController(controller):
 
-    def __init__(self, klp=0.933, klv=0.058, kli=0.061, kap=2.173, kav=0.214, kai=0.064, control_type=P, log_dir="."):
+    def __init__(self, klp=0.05, klv=0.058, kli=0.061, kap=0.5, kav=0.214, kai=0.064, control_type=P, log_dir="."):
         
         super().__init__(klp, klv, kli, kap, kav, kai, control_type, log_dir)
     
@@ -60,6 +60,7 @@ class trajectoryController(controller):
 
         # TODO Part 5: Add saturation limits for the robot linear and angular velocity
 
+        linear_vel *= max(0.0, 1 - abs(e_ang)/0.5)
         # Conservative forward speed for initial trajectory tuning.
         linear_vel = max(0.0, min(0.22, linear_vel))
         angular_vel = max(-1.9, min(1.9, angular_vel))
