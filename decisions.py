@@ -128,7 +128,7 @@ def main(args=None):
 
     # TODO Part 4: instantiate the decision_maker with the proper parameters for moving the robot
     if args.motion.lower() == "point":
-        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=POINT_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir)
+        DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, -1.0], motion_type=POINT_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir)
     elif args.motion.lower() == "trajectory":
         DM=decision_maker(Twist, "/cmd_vel", 10, [-1.0, 1.0], motion_type=TRAJECTORY_PLANNER, control_type=("P", "PD", "PI", "PID").index(args.controller), log_dir=args.log_dir, trajectory=args.trajectory)
     else:
