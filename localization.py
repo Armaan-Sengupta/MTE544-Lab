@@ -29,7 +29,7 @@ class localization(Node):
 
         super().__init__("localizer")
 
-        elf.loc_logger=Logger( loggerName , loggerHeaders)
+        self.loc_logger=Logger( loggerName , loggerHeaders)
         self.pose=None
         
         if type==rawSensors:
@@ -37,7 +37,7 @@ class localization(Node):
         elif type==kalmanFilter:
             self.initKalmanfilter(dt)
         else:
-            print("We don't have this type for localization", sys.stderr)
+            print("We don't have this type for localization", file=sys.stderr)
             return  
 
     def initRawSensors(self):

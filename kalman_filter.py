@@ -1,8 +1,4 @@
-
-
 import numpy as np
-
-
 
 # TODO Part 3: Comment the code explaining each part
 class kalman_filter:
@@ -10,7 +6,7 @@ class kalman_filter:
     # TODO Part 3: Initialize the covariances and the states    
     def __init__(self, P,Q,R, x, dt):
         
-        self.P=...
+        self.P=...  
         self.Q=...
         self.R=...
         self.x=...
