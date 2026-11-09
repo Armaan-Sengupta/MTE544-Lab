@@ -58,11 +58,11 @@ class localization(Node):
         self.kf=kalman_filter(P,Q,R, x, dt)
         
         # TODO Part 3: Use the odometry and IMU data for the EKF
-        self.odom_sub=message_filters.Subscriber("/odom", odom, qos_profile="best_effort")
-        self.imu_sub=message_filters.Subscriber("/imu", Imu, qos_profile="best_effort")
+        self.odom_sub = message_filters.Subscriber(self, odom, "/odom", qos_profile=odom_qos)
+        self.imu_sub = message_filters.Subscriber(self, Imu, "/imu", qos_profile=odom_qos)
         
-        time_syncher=message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size=10, slop=0.1)
-        time_syncher.registerCallback(self.fusion_callback)
+        self.time_syncher = message_filters.ApproximateTimeSynchronizer([self.odom_sub, self.imu_sub], queue_size=10, slop=0.1)
+        self.time_syncher.registerCallback(self.fusion_callback)
     
     def fusion_callback(self, odom_msg: odom, imu_msg: Imu):
         
@@ -72,7 +72,7 @@ class localization(Node):
         # and linear acceleration in x and y from the imu msg
         # the kalman filter should do a proper integration to provide x,y and filter ax,ay
 
-        z = z = np.array([
+        z = np.array([
             odom_msg.twist.twist.linear.x,
             odom_msg.twist.twist.angular.z,
             imu_msg.linear_acceleration.x,
@@ -100,7 +100,7 @@ class localization(Node):
             xhat[3],                 # kf_w = w
             xhat[0],                 # kf_x
             xhat[1],                 # kf_y
-            odom_msg.header.stamp,
+            Time.from_msg(odom_msg.header.stamp).nanoseconds,
         ])
       
     def odom_callback(self, pose_msg):
