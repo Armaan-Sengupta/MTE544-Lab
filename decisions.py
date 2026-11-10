@@ -3,7 +3,8 @@ import sys
 from utilities import euler_from_quaternion, calculate_angular_error, calculate_linear_error
 from pid import PID_ctrl
 
-from rclpy import init, spin, spin_once
+from rclpy import init
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 
@@ -61,10 +62,8 @@ class decision_maker(Node):
 
 
     def timerCallback(self):
-        
-        spin_once(self.localizer)
 
-        if self.localizer.getPose() is  None:
+        if self.localizer.getPose() is None:
             print("waiting for odom msgs ....")
             return
         
@@ -123,10 +122,18 @@ def main(args=None):
 
 
 
+    executor = SingleThreadedExecutor()
+    executor.add_node(DM)
+    executor.add_node(DM.localizer)
+
     try:
-        spin(DM)
+        executor.spin()
     except SystemExit:
         print(f"reached there successfully {DM.localizer.pose}")
+    finally:
+        executor.shutdown()
+        DM.destroy_node()
+        DM.localizer.destroy_node()
 
 
 
