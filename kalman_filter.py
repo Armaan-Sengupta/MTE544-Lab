@@ -38,7 +38,7 @@ class kalman_filter:
         self.x = self.x + kalman_gain @ (z - self.measurement_model())
 
         # Step 5 of EKF: update the predicted covariance with new measurments
-        self.P= (np.identity() - kalman_gain @ self.C) @ self.P
+        self.P= (np.identity(6) - kalman_gain @ self.C) @ self.P
         
     
     # TODO Part 3: Implement here the measurement model
