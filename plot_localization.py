@@ -64,6 +64,8 @@ def extract_columns(headers, data):
     kf_w = get_col("kf_w", 5)
     kf_x = get_col("kf_x", 6)
     kf_y = get_col("kf_y", 7)
+    odom_x = data[:, header_map["odom_x"]] if "odom_x" in header_map else None
+    odom_y = data[:, header_map["odom_y"]] if "odom_y" in header_map else None
     stamp = get_col("stamp", -1)
 
     if stamp is not None and len(stamp) > 1:
@@ -85,6 +87,8 @@ def extract_columns(headers, data):
         "kf_w": kf_w,
         "kf_x": kf_x,
         "kf_y": kf_y,
+        "odom_x": odom_x,
+        "odom_y": odom_y,
     }
 
 
@@ -142,6 +146,8 @@ def plot_localization_data(filename, save_path=None, title_prefix="", show_plot=
 
     # Subplot 4: Trajectory
     ax4 = axes[1, 1]
+    if cols["odom_x"] is not None and cols["odom_y"] is not None:
+        ax4.plot(cols["odom_x"], cols["odom_y"], label="Odometry Path", color="tab:gray", linestyle="--", linewidth=1.5)
     if cols["kf_x"] is not None and cols["kf_y"] is not None:
         ax4.plot(cols["kf_x"], cols["kf_y"], label="EKF Path", color="tab:cyan", linewidth=2.0)
         ax4.plot(cols["kf_x"][0], cols["kf_y"][0], "go", markersize=8, label="Start $(0,0)$")
@@ -201,7 +207,8 @@ def plot_localization_live(filename, interval=150, title_prefix="", save_path=No
     ax3.grid(True, linestyle="--", alpha=0.7)
     ax3.legend(loc="upper right")
 
-    (line_traj,) = ax4.plot([], [], label="Path", color="tab:cyan", linewidth=2.0)
+    (line_odom,) = ax4.plot([], [], label="Odometry", color="tab:gray", linestyle="--", linewidth=1.5)
+    (line_traj,) = ax4.plot([], [], label="EKF Path", color="tab:cyan", linewidth=2.0)
     (point_start,) = ax4.plot([], [], "go", markersize=8, label="Start")
     (point_curr,) = ax4.plot([], [], "ro", markersize=8, label="Current Position")
     ax4.set_title("Robot Trajectory ($x$ vs $y$)", fontweight="semibold")
@@ -245,6 +252,8 @@ def plot_localization_live(filename, interval=150, title_prefix="", save_path=No
         ax3.autoscale_view()
 
         # Subplot 4
+        if cols["odom_x"] is not None and cols["odom_y"] is not None:
+            line_odom.set_data(cols["odom_x"], cols["odom_y"])
         if cols["kf_x"] is not None and cols["kf_y"] is not None:
             kx, ky = cols["kf_x"], cols["kf_y"]
             line_traj.set_data(kx, ky)
