@@ -66,6 +66,8 @@ def extract_columns(headers, data):
     kf_y = get_col("kf_y", 7)
     odom_x = data[:, header_map["odom_x"]] if "odom_x" in header_map else None
     odom_y = data[:, header_map["odom_y"]] if "odom_y" in header_map else None
+    odom_v = data[:, header_map["odom_v"]] if "odom_v" in header_map else None
+    odom_w = data[:, header_map["odom_w"]] if "odom_w" in header_map else None
     stamp = get_col("stamp", -1)
 
     if stamp is not None and len(stamp) > 1:
@@ -89,6 +91,8 @@ def extract_columns(headers, data):
         "kf_y": kf_y,
         "odom_x": odom_x,
         "odom_y": odom_y,
+        "odom_v": odom_v,
+        "odom_w": odom_w,
     }
 
 
@@ -134,11 +138,15 @@ def plot_localization_data(filename, save_path=None, title_prefix="", show_plot=
 
     # Subplot 3: Velocities
     ax3 = axes[1, 0]
+    if cols["odom_v"] is not None:
+        ax3.plot(t, cols["odom_v"], label="Odometry $v$ [m/s]", color="tab:purple", alpha=0.45, linewidth=1.0)
     if cols["kf_vx"] is not None:
-        ax3.plot(t, cols["kf_vx"], label="Linear Velocity $v$ [m/s]", color="tab:purple", linewidth=2.0)
+        ax3.plot(t, cols["kf_vx"], label="EKF $v$ [m/s]", color="tab:purple", linewidth=2.0)
+    if cols["odom_w"] is not None:
+        ax3.plot(t, cols["odom_w"], label="Odometry $\omega$ [rad/s]", color="tab:red", alpha=0.45, linestyle=":", linewidth=1.0)
     if cols["kf_w"] is not None:
-        ax3.plot(t, cols["kf_w"], label="Angular Velocity $\omega$ [rad/s]", color="tab:red", linestyle="--", linewidth=2.0)
-    ax3.set_title("EKF Estimated Velocities", fontweight="semibold")
+        ax3.plot(t, cols["kf_w"], label="EKF $\omega$ [rad/s]", color="tab:red", linestyle="--", linewidth=2.0)
+    ax3.set_title("Velocities: Odometry vs. EKF", fontweight="semibold")
     ax3.set_xlabel("Time [s]")
     ax3.set_ylabel("Velocity")
     ax3.grid(True, linestyle="--", alpha=0.7)
@@ -199,9 +207,11 @@ def plot_localization_live(filename, interval=150, title_prefix="", save_path=No
     ax2.grid(True, linestyle="--", alpha=0.7)
     ax2.legend(loc="upper right")
 
-    (line_kf_vx,) = ax3.plot([], [], label="Velocity $v$ [m/s]", color="tab:purple", linewidth=2.0)
-    (line_kf_w,) = ax3.plot([], [], label="Angular rate $\omega$ [rad/s]", color="tab:red", linestyle="--", linewidth=2.0)
-    ax3.set_title("Estimated Velocities", fontweight="semibold")
+    (line_odom_v,) = ax3.plot([], [], label="Odometry $v$", color="tab:purple", alpha=0.45, linewidth=1.0)
+    (line_kf_vx,) = ax3.plot([], [], label="EKF $v$ [m/s]", color="tab:purple", linewidth=2.0)
+    (line_odom_w,) = ax3.plot([], [], label="Odometry $\omega$", color="tab:red", alpha=0.45, linestyle=":", linewidth=1.0)
+    (line_kf_w,) = ax3.plot([], [], label="EKF $\omega$ [rad/s]", color="tab:red", linestyle="--", linewidth=2.0)
+    ax3.set_title("Velocities: Odometry vs. EKF", fontweight="semibold")
     ax3.set_xlabel("Time [s]")
     ax3.set_ylabel("Velocity")
     ax3.grid(True, linestyle="--", alpha=0.7)
@@ -244,8 +254,12 @@ def plot_localization_live(filename, interval=150, title_prefix="", save_path=No
         ax2.autoscale_view()
 
         # Subplot 3
+        if cols["odom_v"] is not None:
+            line_odom_v.set_data(t, cols["odom_v"])
         if cols["kf_vx"] is not None:
             line_kf_vx.set_data(t, cols["kf_vx"])
+        if cols["odom_w"] is not None:
+            line_odom_w.set_data(t, cols["odom_w"])
         if cols["kf_w"] is not None:
             line_kf_w.set_data(t, cols["kf_w"])
         ax3.relim()
