@@ -56,6 +56,7 @@ class localization(Node):
         P= np.eye(6) # initial state covariance
         
         self.kf=kalman_filter(P,Q,R, x, dt)
+        self.previous_stamp_ns = None
         
         # TODO Part 3: Use the odometry and IMU data for the EKF
         self.odom_sub = message_filters.Subscriber(self, odom, "/odom", qos_profile=odom_qos)
@@ -78,6 +79,18 @@ class localization(Node):
             imu_msg.linear_acceleration.x,
             imu_msg.linear_acceleration.y,
         ])
+
+        stamp_ns = Time.from_msg(odom_msg.header.stamp).nanoseconds
+        if self.previous_stamp_ns is None:
+            dt = 0.0
+        else:
+            dt = (stamp_ns - self.previous_stamp_ns) / 1e9
+            if dt <= 0.0:
+                # Ignoring EKF sample with a non-increasing timestamp
+                return
+
+        self.previous_stamp_ns = stamp_ns
+        self.kf.dt = dt
 
         # Implement the two steps for estimation
         self.kf.predict() 
