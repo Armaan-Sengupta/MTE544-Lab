@@ -13,7 +13,7 @@ class controller:
     
     
     
-    def __init__(self, klp=0.2, klv=0.2, kli=0.2, kap=0.2, kav=0.2, kai=0.2):
+    def __init__(self, klp=0.933, klv=0.058, kli=0.061, kap=2.173, kav=0.214, kai=0.064):
         
         self.PID_linear=PID_ctrl(PID, klp, klv, kli, filename_="linear.csv")
         self.PID_angular=PID_ctrl(PID, kap, kav, kai, filename_="angular.csv")
