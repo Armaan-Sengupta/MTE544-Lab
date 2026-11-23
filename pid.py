@@ -31,7 +31,7 @@ class PID_ctrl:
         
         if status == False:
             self.__update(stamped_error)
-            return 0,0
+            return 0.0
         else:
             return self.__update(stamped_error)
             
@@ -52,6 +52,9 @@ class PID_ctrl:
 
         
         if (len(self.history) != self.history_length):
+            self.logger.log_values([
+                latest_error, 0.0, 0.0, Time.from_msg(stamp).nanoseconds / 1e9
+            ])
             return self.kp * latest_error
         
         
@@ -63,14 +66,19 @@ class PID_ctrl:
             
             dt=(t1.nanoseconds - t0.nanoseconds) / 1e9
             
-            dt_avg+=0.1
-            dt=0.1            
-            
+            if dt <= 0:
+                self.history = [stamped_error]
+                self.logger.log_values([
+                    latest_error, 0.0, 0.0, Time.from_msg(stamp).nanoseconds / 1e9
+                ])
+                return self.kp * latest_error
+
+            dt_avg+=dt
             error_dot+=(self.history[i][0] - self.history[i-1][0])/dt
             
             
-        error_dot/=len(self.history)
-        dt_avg/=len(self.history)
+        error_dot/=(len(self.history) - 1)
+        dt_avg/=(len(self.history) - 1)
         
         
         sum_=0
@@ -82,7 +90,7 @@ class PID_ctrl:
             
         
         
-        self.logger.log_values( [latest_error, error_dot, error_int, Time.from_msg(stamp).nanoseconds])
+        self.logger.log_values([latest_error, error_dot, error_int, Time.from_msg(stamp).nanoseconds / 1e9])
 
         
         

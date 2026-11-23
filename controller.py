@@ -1,4 +1,5 @@
 
+from pathlib import Path
 from pid import PID_ctrl
 
 import numpy as np
@@ -13,10 +14,10 @@ class controller:
     
     
     
-    def __init__(self, klp=0.2, klv=0.2, kli=0.2, kap=0.2, kav=0.2, kai=0.2):
+    def __init__(self, klp=0.4, klv=0.08, kli=0.15, kap=1, kav=0.214, kai=0.064, control_type=PID, log_dir="."):
         
-        self.PID_linear=PID_ctrl(PID, klp, klv, kli, filename_="linear.csv")
-        self.PID_angular=PID_ctrl(PID, kap, kav, kai, filename_="angular.csv")
+        self.PID_linear=PID_ctrl(control_type, klp, klv, kli, filename_=Path(log_dir) / "linear.csv")
+        self.PID_angular=PID_ctrl(control_type, kap, kav, kai, filename_=Path(log_dir) / "angular.csv")
 
     
     def vel_request(self, pose, goal, status):
@@ -28,8 +29,10 @@ class controller:
         linear_vel=self.PID_linear.update([e_lin, pose[3]], status)
         angular_vel=self.PID_angular.update([e_ang, pose[3]], status) 
 
-        linear_vel = 0.5 if linear_vel > 1.0 else linear_vel
-        angular_vel= 0.5 if angular_vel > 1.0 else angular_vel
+        linear_vel = 0.31 if linear_vel > 0.31 else linear_vel
+        linear_vel = -0.31 if linear_vel < -0.31 else linear_vel
+        angular_vel = 1.9 if angular_vel > 1.9 else angular_vel
+        angular_vel = -1.9 if angular_vel < -1.9 else angular_vel
 
 
         return linear_vel, angular_vel
@@ -37,8 +40,8 @@ class controller:
 
 class trajectoryController(controller):
 
-    def __init__(self, klp=0.2, klv=0.2, kli=0.2, kap=0.2, kav=0.2, kai=0.2, lookAhead=1.0, targetVel=1.0):
-        super().__init__(klp, klv, kli, kap, kav, kai)
+    def __init__(self, klp=0.05, klv=0.058, kli=0.061, kap=0.5, kav=0.214, kai=0.064, control_type=PID, log_dir=".", lookAhead=1.0, targetVel=1.0):
+        super().__init__(klp, klv, kli, kap, kav, kai, control_type, log_dir)
         self.lookAhead=lookAhead
         self.targetVelocity=targetVel
     
@@ -56,8 +59,9 @@ class trajectoryController(controller):
         linear_vel=self.PID_linear.update([e_lin, pose[3]], status)
         angular_vel=self.PID_angular.update([e_ang, pose[3]], status) 
 
-        linear_vel = 0.1 if linear_vel > 0.1 else linear_vel
-        angular_vel= 0.5 if angular_vel > 0.5 else angular_vel
+        linear_vel *= max(0.0, 1 - abs(e_ang)/0.5)
+        linear_vel = max(0.0, min(0.22, linear_vel))
+        angular_vel = max(-1.9, min(1.9, angular_vel))
 
 
         return linear_vel, angular_vel

@@ -9,36 +9,33 @@ import numpy as np
 class kalman_filter:
     
     
-    def __init__(self, P,Q,R, x):
+    def __init__(self, P, Q, R, x, dt: float = 0.1):
         
-        self.P=P
-        self.Q=Q
-        self.R=R
-        self.x=x
-
-        
-        
-    def predict(self, dt):
-        
+        self.P = P.copy()
+        self.Q = Q.copy()
+        self.R = R.copy()
+        self.x = x.copy()
         self.dt = dt
 
+        
+        
+    def predict(self, dt=None):
+        
+        if dt is not None:
+            self.dt = dt
+
         self.A = self.jacobian_A()
+        self.x = self.motion_model()
         self.C = self.jacobian_H()
         
-        self.motion_model()
-        
-        self.P= np.dot( np.dot(self.A, self.P), self.A.T) + self.Q
+        self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
     
     def update(self, z):
 
-        S=np.dot(np.dot(self.C, self.P), self.C.T) + self.R
-            
-        kalman_gain=np.dot(np.dot(self.P, self.C.T), np.linalg.inv(S))
-        
-        surprise_error= z - self.measurement_model()
-        
-        self.x=self.x + np.dot(kalman_gain, surprise_error)
-        self.P=np.dot( (np.eye(self.A.shape[0]) - np.dot(kalman_gain, self.C)) , self.P)
+        kalman_gain = self.P @ self.C.T @ np.linalg.inv((self.C @ self.P @ self.C.T + self.R))
+
+        self.x = self.x + kalman_gain @ (z - self.measurement_model())
+        self.P = (np.identity(6) - kalman_gain @ self.C) @ self.P
         
     
 
@@ -56,7 +53,7 @@ class kalman_filter:
         x, y, th, w, v, vdot = self.x
         dt = self.dt
         
-        self.x = np.array([
+        return np.array([
             x + v * np.cos(th) * dt,
             y + v * np.sin(th) * dt,
             th + w * dt,
