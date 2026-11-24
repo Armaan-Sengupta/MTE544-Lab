@@ -31,9 +31,12 @@ class planner:
         # TODO PART 5 Create the cost-map, the laser_sig is 
         # the standard deviation for the gausiian for which
         # the mean is located on the occupant grid. 
-
+         
+        # Load the map found via slam
+        # Laser_sig = 0.32 determined from dimensions of the Tb4 plus buffer distance
         self.m_utilites = mapManipulator(filename_=self.mapName, laser_sig=0.32)
-            
+
+        # Create cost map of the map found via SLAM
         self.costMap = self.m_utilites.make_likelihood_field()
         
 
@@ -49,30 +52,35 @@ class planner:
         endPose = self.m_utilites.position_2_cell(endPoseCart)
         
         # TODO PART 5 convert the cell pixels into the cartesian coordinates
+        # Check both endpoints are within the map before indexing
         height, width = self.costMap.shape
         start_x, start_y = startPose
         end_x, end_y = endPose
         if not (0 <= start_x < width and 0 <= start_y < height):
             return None
+
         if not (0 <= end_x < width and 0 <= end_y < height):
             return None
+
+        # Cost map indices are [y,x] with values above 0.8 being blocked
         if self.costMap[start_y, start_x] > 0.8:
             print(f"Start pose {startPoseCart} (cell {startPose}) is inside an obstacle")
             return None
+        
         if self.costMap[end_y, end_x] > 0.8:
             print(f"Goal pose {endPoseCart} (cell {endPose}) is inside an obstacle")
             return None
-        
-        cell_path = search(self.costMap, startPose, endPose, heuristic="euclidean")
+
+        # Run A* on the cost map to get path in grid cell
+        # Pass in the heuristic you want
+        cell_path = search(self.costMap, startPose, endPose, heuristic="manhattan")
+
+        # Reject any missing or partial paths that do not reach goal
         if not cell_path or cell_path[-1] != endPose:
             return None
 
-
-
         # TODO PART 5 return the path as list of [x,y]
         return [list(self.m_utilites.cell_2_position(cell)) for cell in cell_path]
-
-
 
 
 if __name__=="__main__":

@@ -62,9 +62,11 @@ def search(maze, start, end, heuristic="euclidean"):
         :param heuristic: "euclidean" or "manhattan"
         :return: Array of positions (tuples)
     """    
+    # Choose huristic default being euclidean
     if heuristic not in ("euclidean", "manhattan"):
         raise ValueError("heuristic must be 'euclidean' or 'manhattan'")
-    
+
+    # Distance calculation between start and end nodes for either heuristic
     def distance_to_goal(position):
         dx = abs(position[0] - end[0])
         dy = abs(position[1] - end[1])
@@ -77,15 +79,19 @@ def search(maze, start, end, heuristic="euclidean"):
 
     # TODO PART 4 Create start and end node with initized values for g, h and f
     # Use None as parent if not defined
+
+    # g is current cost so far, h is estimated cost to the goal
+    # f = g + h determines which node to expand to next
     start_node = Node(None, tuple(start))
     start_node.g = 0    # cost from start Node
     start_node.h = distance_to_goal(start_node.position)     # heuristic estimated cost to end Node
-    start_node.f = start_node.g + start_node.h
+    start_node.f = start_node.g + start_node.h # Current cost + Heuristic cost
 
+    # Search uses end node's position to detect when it reaches the goal
     end_node = Node(None, tuple(end))
     end_node.g = float("inf")      # set a large value if not defined
     end_node.h = distance_to_goal(end_node.position)       # heuristic estimated cost to end Node
-    end_node.f = end_node.g + end_node.h
+    end_node.f = end_node.g + end_node.h # Current cost + Heuristic cost
 
     # Initialize both yet_to_visit and visited dictionary
     # in this dict we will put all node that are yet_to_visit for exploration.
@@ -108,11 +114,15 @@ def search(maze, start, end, heuristic="euclidean"):
     move = [[0, -1],  # go up
             [-1, 0],  # go left
             [0, 1],   # go down
-            [1, 0],  # go right
-            [-1, -1],  # go up left
-            [-1, 1],   # go down left
-            [1, -1],  # go up right
-            [1, 1]]  # go down right
+            [1, 0]]  # go right
+
+    # To ensure A* finds optimal path only allow Manhattan to move in 4pt connectivity
+    # This ensures herustic costy is an under-estimate of the actual cost-to-go
+    if heuristic == "euclidean":
+        move.extend([[-1, -1],  # go up left
+                     [-1, 1],   # go down left
+                     [1, -1],   # go up right
+                     [1, 1]])   # go down right
 
     """
         1) We first get the current node by comparing all f cost and selecting the lowest cost node for further expansion
@@ -197,10 +207,11 @@ def search(maze, start, end, heuristic="euclidean"):
                 continue
 
             # TODO PART 4 Create the f, g, and h values
+            # Cost to get to current cell plus one more step
             child.g = current_node.g + 1
             # Heuristic costs calculated here, this is using eucledian distance
             child.h = distance_to_goal(child.position)
-
+            # Total Expected Cost
             child.f = child.g + child.h
 
             # Child is already in the yet_to_visit list and g cost is already lower

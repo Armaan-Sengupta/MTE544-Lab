@@ -17,7 +17,7 @@ from nav_msgs.msg import Odometry as odom
 from localization import localization, rawSensors, kalmanFilter
 
 from planner import TRAJECTORY_PLANNER, POINT_PLANNER, planner
-from controller import controller, trajectoryController, PID
+from controller import controller, trajectoryController, PID # Our changes from previous labs
 
 
 from geometry_msgs.msg import PoseStamped
@@ -46,11 +46,10 @@ class decision_maker(Node):
         self.reachThreshold=0.15
 
         # TODO PART 5 your localization type
-        self.localizer=localization(kalmanFilter)
+        self.localizer=localization(kalmanFilter) # Use kalman filter developed in lab 3
 
-
-        
         if motion_type==POINT_PLANNER:
+            # Use values from our Lab2 
             self.controller=controller(klp=0.4, klv=0.08, kli=0.15, kap=1, kav=0.214, kai=0.064, control_type=PID)      
             self.planner=planner(POINT_PLANNER)
 

@@ -39,7 +39,7 @@ class controller:
     
 
 class trajectoryController(controller):
-
+    # Merge our lab 2 and 3 changes
     def __init__(self, klp=0.05, klv=0.058, kli=0.061, kap=0.5, kav=0.214, kai=0.064, control_type=PID, log_dir=".", lookAhead=1.0, targetVel=1.0):
         super().__init__(klp, klv, kli, kap, kav, kai, control_type, log_dir)
         self.lookAhead=lookAhead
