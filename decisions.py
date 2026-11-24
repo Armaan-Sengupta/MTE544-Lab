@@ -17,7 +17,7 @@ from nav_msgs.msg import Odometry as odom
 from localization import localization, rawSensors, kalmanFilter
 
 from planner import TRAJECTORY_PLANNER, POINT_PLANNER, planner
-from controller import controller, trajectoryController
+from controller import controller, trajectoryController, PID
 
 
 from geometry_msgs.msg import PoseStamped
@@ -43,21 +43,21 @@ class decision_maker(Node):
         publishing_period=1/rate
 
         # TODO PART 5 choose your threshold
-        self.reachThreshold=...
+        self.reachThreshold=0.15
 
         # TODO PART 5 your localization type
-        self.localizer=localization(...)
+        self.localizer=localization(kalmanFilter)
 
 
         
         if motion_type==POINT_PLANNER:
-            self.controller=controller(klp=0.2, klv=0.5, kap=0.8, kav=0.6)      
+            self.controller=controller(klp=0.4, klv=0.08, kli=0.15, kap=1, kav=0.214, kai=0.064, control_type=PID)      
             self.planner=planner(POINT_PLANNER)
 
         
         elif motion_type==TRAJECTORY_PLANNER:
             # TODO PART 5 Put the gains that you concluded from lab 2
-            self.controller=trajectoryController(...)      
+            self.controller=trajectoryController(klp=0.05, klv=0.058, kli=0.061, kap=0.5, kav=0.214, kai=0.064, control_type=PID)      
             self.planner=planner(TRAJECTORY_PLANNER)
         
         else:
@@ -77,7 +77,9 @@ class decision_maker(Node):
     # This is for the rviz2 interface
     def designPathFor(self, msg: PoseStamped):
         
-        spin_once(self.localizer)
+        # We get sensor data fastr than the planner can plan, so we need to spin a few times to get the latest pose
+        for _ in range(10):
+            spin_once(self.localizer, timeout_sec=0.0)
         
         if self.localizer.getPose() is  None:
             print("waiting for odom msgs ....")
@@ -88,8 +90,9 @@ class decision_maker(Node):
 
     
     def timerCallback(self):
-        
-        spin_once(self.localizer)
+        # We get sensor data fastr than the planner can plan, so we need to spin a few times to get the latest pose
+        for _ in range(10):
+            spin_once(self.localizer, timeout_sec=0.0)
 
         if self.localizer.getPose() is  None:
             print("waiting for odom msgs ....")
@@ -98,10 +101,10 @@ class decision_maker(Node):
         
         vel_msg=Twist()
         
-        if self.goal is None:
+        if not self.goal:
             return
         
-        if type(self.goal) == list:
+        if type(self.goal) == list and isinstance(self.goal[0], (list, tuple)):
             reached_goal=True if calculate_linear_error(self.localizer.getPose(), self.goal[-1]) <self.reachThreshold else False
         else: 
             reached_goal=True if calculate_linear_error(self.localizer.getPose(), self.goal) <self.reachThreshold else False
@@ -131,7 +134,8 @@ class decision_maker(Node):
         vel_msg.angular.z=yaw_rate
         
         self.publisher.publish(vel_msg)
-        self.publishPathOnRviz2(self.goal)
+        if type(self.goal) == list and isinstance(self.goal[0], (list, tuple)):
+            self.publishPathOnRviz2(self.goal)
 
 
 

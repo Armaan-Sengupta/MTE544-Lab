@@ -60,10 +60,8 @@ def search(maze, start, end, heuristic="euclidean"):
         :param start:
         :param end:
         :param heuristic: "euclidean" or "manhattan"
-        :return:
-    """
-    print("searching ....")
-    
+        :return: Array of positions (tuples)
+    """    
     if heuristic not in ("euclidean", "manhattan"):
         raise ValueError("heuristic must be 'euclidean' or 'manhattan'")
     
