@@ -29,7 +29,7 @@ from geometry_msgs.msg import PoseStamped
 class decision_maker(Node):
     
     
-    def __init__(self, publisher_msg, publishing_topic, qos_publisher, rate=10, motion_type=POINT_PLANNER):
+    def __init__(self, publisher_msg, publishing_topic, qos_publisher, rate=10, motion_type=POINT_PLANNER, heuristic="euclidean", laser_sig=0.32, visualize=False):
 
         super().__init__("decision_maker")
 
@@ -57,13 +57,14 @@ class decision_maker(Node):
         elif motion_type==TRAJECTORY_PLANNER:
             # TODO PART 5 Put the gains that you concluded from lab 2
             self.controller=trajectoryController(klp=0.05, klv=0.058, kli=0.061, kap=0.5, kav=0.214, kai=0.064, control_type=PID)      
-            self.planner=planner(TRAJECTORY_PLANNER)
+            self.planner=planner(TRAJECTORY_PLANNER, heuristic=heuristic, laser_sig=laser_sig, visualize=visualize)
         
         else:
             print("Error! you don't have this type of planner", file=sys.stderr)
 
 
         self.goal = None
+        self.pending_goal = None
 
         self.create_timer(publishing_period, self.timerCallback)
 
@@ -81,9 +82,11 @@ class decision_maker(Node):
             spin_once(self.localizer, timeout_sec=0.0)
         
         if self.localizer.getPose() is  None:
+            self.pending_goal = msg
             print("waiting for odom msgs ....")
             return
         
+        self.pending_goal = None
         self.goal=self.planner.plan([self.localizer.getPose()[0], self.localizer.getPose()[1]],
                                      [msg.pose.position.x, msg.pose.position.y])
 
@@ -96,6 +99,11 @@ class decision_maker(Node):
         if self.localizer.getPose() is  None:
             print("waiting for odom msgs ....")
             return
+
+        if self.pending_goal is not None:
+            pending = self.pending_goal
+            self.pending_goal = None
+            self.designPathFor(pending)
         
         
         vel_msg=Twist()
@@ -173,7 +181,15 @@ def main(args=None):
     if args.motion == "point":
         DM=decision_maker(Twist, "/cmd_vel", 10, motion_type=POINT_PLANNER)
     elif args.motion == "trajectory":
-        DM=decision_maker(Twist, "/cmd_vel", 10, motion_type=TRAJECTORY_PLANNER)
+        DM=decision_maker(
+            Twist,
+            "/cmd_vel",
+            10,
+            motion_type=TRAJECTORY_PLANNER,
+            heuristic=args.heuristic,
+            laser_sig=args.laser_sig,
+            visualize=args.viz,
+        )
     else:
         print("invalid motion type", file=sys.stderr)
 
@@ -190,6 +206,9 @@ def main(args=None):
 if __name__=="__main__":
     argParser=argparse.ArgumentParser(description="point or trajectory") 
     argParser.add_argument("--motion", type=str, default="trajectory")
+    argParser.add_argument("--heuristic", type=str, default="euclidean", choices=["euclidean", "manhattan"])
+    argParser.add_argument("--laser-sig", type=float, default=0.32)
+    argParser.add_argument("--viz", action="store_true")
     args = argParser.parse_args()
 
     main(args)

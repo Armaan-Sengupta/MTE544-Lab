@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button
 from math import sqrt
 
 
@@ -47,7 +48,90 @@ def return_path(current_node, maze):
     return path
 
 
-def search(maze, start, end, heuristic="euclidean"):
+class _SearchVisualizer:
+    """Live Matplotlib visualizer for A* search over occupancy/cost grids."""
+
+    def __init__(self, cost_grid, start, end, heuristic, raw_map=None, threshold=0.8):
+        self.heuristic = heuristic
+        self.skip = False
+        plt.ion()
+        if raw_map is not None:
+            self.fig, (self.ax_occ, self.ax_cost) = plt.subplots(1, 2, figsize=(13, 6))
+            self.ax_occ.imshow(raw_map, cmap="gray", origin="upper", vmin=0, vmax=255)
+            blocked = np.ma.masked_where(cost_grid <= threshold, cost_grid)
+            self.ax_occ.imshow(blocked, cmap="autumn", origin="upper", alpha=0.45)
+            self.ax_occ.set_title(f"Occupancy Grid + Blocked (> {threshold})")
+            self.ax_occ.set_xlabel("cell x (col)")
+            self.ax_occ.set_ylabel("cell y (row)")
+            self.axes = (self.ax_occ, self.ax_cost)
+        else:
+            self.fig, self.ax_cost = plt.subplots(1, 1, figsize=(7, 6))
+            self.ax_occ = None
+            self.axes = (self.ax_cost,)
+
+        self.ax_cost.imshow(cost_grid, cmap="viridis", origin="upper", vmin=0.0, vmax=1.0)
+        self.ax_cost.set_xlabel("cell x (col)")
+        self.ax_cost.set_ylabel("cell y (row)")
+
+        for ax in self.axes:
+            ax.plot(start[0], start[1], "go", markersize=8, label="Start")
+            ax.plot(end[0], end[1], "r*", markersize=11, label="Goal")
+
+        empty = np.empty((0, 2))
+        self.visited_scatter = self.ax_cost.scatter(
+            empty[:, 0], empty[:, 1], s=8, c="cyan", alpha=0.5, label="Visited"
+        )
+        self.frontier_scatter = self.ax_cost.scatter(
+            empty[:, 0], empty[:, 1], s=10, c="yellow", alpha=0.8, label="Frontier"
+        )
+        self.ax_cost.legend(loc="upper right", fontsize=8)
+        self.ax_cost.set_title(f"A* ({heuristic}) | starting...")
+        self.fig.tight_layout(rect=[0, 0.08, 1, 1])
+        ax_btn = self.fig.add_axes([0.80, 0.015, 0.16, 0.045])
+        self.skip_button = Button(ax_btn, "Skip Animation")
+        self.skip_button.on_clicked(self._on_skip)
+        plt.pause(0.001)
+
+    def _on_skip(self, _event):
+        self.skip = True
+
+    def update(self, iterations, visited_dict, yet_to_visit_dict):
+        if self.skip:
+            return
+        if visited_dict:
+            self.visited_scatter.set_offsets(np.array(list(visited_dict.keys())))
+        if yet_to_visit_dict:
+            self.frontier_scatter.set_offsets(np.array(list(yet_to_visit_dict.keys())))
+        self.ax_cost.set_title(
+            f"A* ({self.heuristic}) | iter={iterations} visited={len(visited_dict)} open={len(yet_to_visit_dict)}"
+        )
+        self.fig.canvas.draw_idle()
+        plt.pause(0.001)
+
+    def finish(self, path, visited_dict, yet_to_visit_dict, iterations, block=True):
+        self.skip_button.ax.set_visible(False)
+        if visited_dict:
+            self.visited_scatter.set_offsets(np.array(list(visited_dict.keys())))
+        if yet_to_visit_dict:
+            self.frontier_scatter.set_offsets(np.array(list(yet_to_visit_dict.keys())))
+        if path:
+            px, py = zip(*path)
+            for ax in self.axes:
+                ax.plot(px, py, color="lime", linewidth=2.0, label="Path")
+                ax.legend(loc="upper right", fontsize=8)
+        self.ax_cost.set_title(
+            f"A* ({self.heuristic}) | iter={iterations} visited={len(visited_dict)} path={len(path) if path else 0} (close window to start)"
+        )
+        self.fig.canvas.draw_idle()
+        plt.ioff()
+        if block:
+            plt.show()
+        else:
+            plt.show(block=False)
+            plt.pause(0.1)
+
+
+def search(maze, start, end, heuristic="euclidean", visualize=False, raw_map=None, threshold=0.8, block=True):
 
     print("searching ....")
 
@@ -145,6 +229,7 @@ def search(maze, start, end, heuristic="euclidean"):
     no_rows, no_columns = maze.shape
 
     # Loop until you find the end
+    viz = _SearchVisualizer(maze.T, start, end, heuristic, raw_map=raw_map, threshold=threshold) if visualize else None
 
     while len(yet_to_visit_dict) > 0:
 
@@ -163,16 +248,25 @@ def search(maze, start, end, heuristic="euclidean"):
         # computation cost is too high
         if outer_iterations > max_iterations:
             print("giving up on pathfinding too many iterations")
-            return return_path(current_node, maze)
+            path = return_path(current_node, maze)
+            if viz is not None:
+                viz.finish(path, visited_dict, yet_to_visit_dict, outer_iterations, block=block)
+            return path
 
         # Pop current node out off yet_to_visit dict, add to visited list
         yet_to_visit_dict.pop(current_node.position)
         visited_dict[current_node.position] = True
 
+        if viz is not None and outer_iterations % 25 == 0:
+            viz.update(outer_iterations, visited_dict, yet_to_visit_dict)
+
         # test if goal is reached or not, if yes then return the path
         if current_node == end_node:
 
-            return return_path(current_node, maze)
+            path = return_path(current_node, maze)
+            if viz is not None:
+                viz.finish(path, visited_dict, yet_to_visit_dict, outer_iterations, block=block)
+            return path
 
         # Generate children from all adjacent squares
         children = []

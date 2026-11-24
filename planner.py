@@ -5,10 +5,14 @@ from a_star import *
 POINT_PLANNER=0; TRAJECTORY_PLANNER=1
 
 class planner:
-    def __init__(self, type_, mapName="room"):
+    def __init__(self, type_, mapName="room", heuristic="euclidean", laser_sig=0.32, visualize=False):
 
         self.type=type_
         self.mapName=mapName
+        self.heuristic=heuristic
+        self.laser_sig=laser_sig
+        self.visualize=visualize
+        self.costMap=None
 
     
     def plan(self, startPose, endPose):
@@ -17,8 +21,8 @@ class planner:
             return self.point_planner(endPose)
         
         elif self.type==TRAJECTORY_PLANNER:
-            self.costMap=None
-            self.initTrajectoryPlanner()
+            if self.costMap is None:
+                self.initTrajectoryPlanner()
             return self.trajectory_planner(startPose, endPose)
 
 
@@ -31,10 +35,10 @@ class planner:
         # TODO PART 5 Create the cost-map, the laser_sig is 
         # the standard deviation for the gausiian for which
         # the mean is located on the occupant grid. 
-         
+
         # Load the map found via slam
-        # Laser_sig = 0.32 determined from dimensions of the Tb4 plus buffer distance
-        self.m_utilites = mapManipulator(filename_=self.mapName, laser_sig=0.32)
+        # The default laser_sig of 0.32 accounts for the Tb4 dimensions and buffer distance.
+        self.m_utilites = mapManipulator(filename_=self.mapName, laser_sig=self.laser_sig)
 
         # Create cost map of the map found via SLAM
         self.costMap = self.m_utilites.make_likelihood_field()
@@ -70,10 +74,16 @@ class planner:
         if self.costMap[end_y, end_x] > 0.8:
             print(f"Goal pose {endPoseCart} (cell {endPose}) is inside an obstacle")
             return None
-
         # Run A* on the cost map to get path in grid cell
         # Pass in the heuristic you want
-        cell_path = search(self.costMap, startPose, endPose, heuristic="manhattan")
+        cell_path = search(
+            self.costMap,
+            startPose,
+            endPose,
+            heuristic=self.heuristic,
+            visualize=self.visualize,
+            raw_map=self.m_utilites.image_array,
+        )
 
         # Reject any missing or partial paths that do not reach goal
         if not cell_path or cell_path[-1] != endPose:
