@@ -22,7 +22,7 @@ trap cleanup EXIT INT TERM
 python3 "$REPO_DIR/mapPublisher.py" &
 PIDS+=($!)
 
-rviz2 -d "$REPO_DIR/pathPlanner.rviz" >/dev/null 2>&1 &
+QT_QPA_PLATFORM=xcb rviz2 -d "$REPO_DIR/pathPlanner.rviz" >/dev/null 2>&1 &
 PIDS+=($!)
 
 python3 "$REPO_DIR/decisions.py" "$@" &
