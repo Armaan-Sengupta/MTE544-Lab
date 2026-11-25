@@ -1,6 +1,8 @@
 
 
 import sys
+from datetime import datetime
+from pathlib import Path as FilePath
 
 
 from utilities import euler_from_quaternion, calculate_angular_error, calculate_linear_error
@@ -89,6 +91,12 @@ class decision_maker(Node):
         self.pending_goal = None
         self.goal=self.planner.plan([self.localizer.getPose()[0], self.localizer.getPose()[1]],
                                      [msg.pose.position.x, msg.pose.position.y])
+        if (
+            isinstance(self.goal, list)
+            and self.goal
+            and isinstance(self.goal[0], (list, tuple))
+        ):
+            self.saveTrajectory(self.goal)
 
     
     def timerCallback(self):
@@ -145,6 +153,19 @@ class decision_maker(Node):
             self.publishPathOnRviz2(self.goal)
 
 
+
+    def saveTrajectory(self, points):
+        output_dir = FilePath(__file__).resolve().parent / "runs"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = output_dir / f"planned_trajectory_{timestamp}.yaml"
+
+        with filename.open("w", encoding="utf-8") as output:
+            output.write("frame_id: map\nposes:\n")
+            for x, y in points:
+                output.write(f"  - x: {float(x):.6f}\n    y: {float(y):.6f}\n")
+
+        self.get_logger().info(f"Saved planned trajectory to {filename}")
 
     def publishPathOnRviz2(self, path):
 

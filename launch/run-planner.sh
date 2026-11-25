@@ -5,10 +5,22 @@ SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$REPO_DIR"
 
-GOAL_X="-2.1"
-GOAL_Y="1.0"
-
 source /opt/ros/humble/setup.bash
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-2}"
+export FASTRTPS_DEFAULT_PROFILES_FILE="${FASTRTPS_DEFAULT_PROFILES_FILE:-$HOME/.fastdds.xml}"
+if [[ ! -f "$FASTRTPS_DEFAULT_PROFILES_FILE" ]]; then
+    printf 'Fast DDS profile not found: %s\n' "$FASTRTPS_DEFAULT_PROFILES_FILE" >&2
+    exit 1
+fi
+
+export QT_QPA_PLATFORM=xcb
+QT5CT_PLUGIN_DIR="$HOME/.local/lib/qt5/plugins"
+if [[ -f "$QT5CT_PLUGIN_DIR/platformthemes/libqt5ct.so" ]]; then
+    export QT_PLUGIN_PATH="$QT5CT_PLUGIN_DIR${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+    export QT_QPA_PLATFORMTHEME=qt5ct
+elif [[ -f /usr/lib/x86_64-linux-gnu/qt5/plugins/platformthemes/libqt5ct.so ]]; then
+    export QT_QPA_PLATFORMTHEME=qt5ct
+fi
 
 PIDS=()
 cleanup() {
@@ -22,21 +34,10 @@ trap cleanup EXIT INT TERM
 python3 "$REPO_DIR/mapPublisher.py" &
 PIDS+=($!)
 
-QT_QPA_PLATFORM=xcb rviz2 -d "$REPO_DIR/pathPlanner.rviz" >/dev/null 2>&1 &
+rviz2 -d "$REPO_DIR/pathPlanner.rviz" &
 PIDS+=($!)
 
 python3 "$REPO_DIR/decisions.py" "$@" &
 PIDS+=($!)
-
-for _ in $(seq 1 30); do
-    if ros2 topic info /goal_pose 2>/dev/null | grep -q "Subscription count: [1-9]"; then
-        break
-    fi
-    sleep 0.5
-done
-
-echo "Publishing fixed goal pose: x=$GOAL_X, y=$GOAL_Y"
-ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped \
-    "{header: {frame_id: 'map'}, pose: {position: {x: $GOAL_X, y: $GOAL_Y, z: 0.0}, orientation: {z: 0.976, w: 0.219}}}"
 
 wait "${PIDS[@]}"
